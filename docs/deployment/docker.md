@@ -42,6 +42,41 @@ Expected response:
 {"status": "ok"}
 ```
 
+## Local OrbStack smoke test
+
+This optional local-only override starts only the API server. It binds the API
+only to `127.0.0.1`, disables Ollama, and does not download a model or contact
+an external provider. It is not a production deployment configuration.
+
+From the repository root, use a disposable, non-secret API-key placeholder:
+
+```bash
+export OPENJARVIS_API_KEY=local-validation-placeholder
+docker compose -p openjarvis-orbstack-smoke \
+  -f deploy/docker/docker-compose.yml \
+  -f deploy/docker/docker-compose.orbstack.yml \
+  up --build -d jarvis
+
+curl --fail http://127.0.0.1:8000/health
+curl --fail -H "Authorization: Bearer $OPENJARVIS_API_KEY" \
+  http://127.0.0.1:8000/openapi.json >/dev/null
+```
+
+Inspect the published address and shut the disposable project down:
+
+```bash
+docker compose -p openjarvis-orbstack-smoke \
+  -f deploy/docker/docker-compose.yml \
+  -f deploy/docker/docker-compose.orbstack.yml \
+  ps
+
+docker compose -p openjarvis-orbstack-smoke \
+  -f deploy/docker/docker-compose.yml \
+  -f deploy/docker/docker-compose.orbstack.yml \
+  down --volumes --remove-orphans
+unset OPENJARVIS_API_KEY
+```
+
 ## Docker Images
 
 ### CPU-Only Image (`Dockerfile`)

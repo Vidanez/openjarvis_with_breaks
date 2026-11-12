@@ -1,0 +1,12 @@
+# Local OrbStack smoke override. Do not use for remote deployment.
+services:
+  jarvis:
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    depends_on: !reset []
+    restart: "no"
+
+  ollama:
+    profiles: ["disabled"]
+    ports: !reset []
+    restart: "no"
