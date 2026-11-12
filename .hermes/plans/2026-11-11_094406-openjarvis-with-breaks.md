@@ -222,10 +222,11 @@ oci --profile DEFAULT --region eu-madrid-1 iam availability-domain list --all --
 
 **TDD tasks:**
 1. Test default rejection of uploads, MCP servers, shell, filesystem paths, and cloud providers.
-2. Add provider allowlist, region/retention metadata, model concurrency/token caps, and budget exhaustion fail-closed behavior.
+2. Add provider allowlist, region/retention metadata, model concurrency/token caps, and budget exhaustion fail-closed behavior. Provider admission supports local Ollama and approved external OpenAI-compatible providers; neither is enabled by default.
 3. Admit only declared MCP endpoints with version/hash/permission metadata; reject stdio commands and undeclared URLs.
-4. Specify the attachment quarantine contract: size/MIME detection, nested archive policy, malware scanning, no-network/no-secret parser sandbox, rendered-text policy, and owner admission.
-5. Implement no attachment handling yet; retain it disabled until the contract’s testable pipeline exists.
+4. Define a dedicated `openjarvis-bridge` Hermes profile, separate from the interactive/default Hermes profile. If Hermes MCP serving is adopted, it must be loopback-only and expose only a narrow, reviewed tool allowlist; OpenJarvis consumes it as an explicitly admitted MCP endpoint. The bridge must not inherit browser, terminal, filesystem, credentials, memories, or unrestricted tools from another Hermes profile.
+5. Specify the attachment quarantine contract: size/MIME detection, nested archive policy, malware scanning, no-network/no-secret parser sandbox, rendered-text policy, and owner admission.
+6. Implement no attachment handling yet; retain it disabled until the contract’s testable pipeline exists.
 
 **Acceptance:** A configuration cannot enable a capability without its explicit admission record and tests.
 
