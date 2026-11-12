@@ -131,7 +131,7 @@ class TestDockerFiles:
             "Dockerfile.sandbox",
         ]
         required_markers = [
-            "rustup toolchain install 1.88",
+            "rustup toolchain install 1.89",
             "maturin build --release",
             "rust/crates/openjarvis-python/Cargo.toml",
             "/tmp/openjarvis-rust-wheel/*.whl",
