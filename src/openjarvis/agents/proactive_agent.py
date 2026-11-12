@@ -47,6 +47,7 @@ from openjarvis.core.config import load_config
 from openjarvis.core.paths import get_config_dir
 from openjarvis.core.registry import AgentRegistry
 from openjarvis.core.types import Message, Role, ToolCall
+from openjarvis.profiles.openjarvis_with_breaks import PersonalAssistantProfile
 from openjarvis.tools.approval_store import (
     DECISION_ALWAYS_APPROVE,
     DECISION_ALWAYS_DENY,
@@ -304,10 +305,12 @@ class ProactiveAgent(ToolUsingAgent):
             "approval_store", None
         )
         self._timezone: str = kwargs.pop("timezone", "America/Los_Angeles")
+        profile = PersonalAssistantProfile()
 
         # Read config defaults before super().__init__ so we can inject tools
         try:
             cfg = load_config()
+            profile = cfg.profile
             p = cfg.proactive
             if not self._notification_channel_id:
                 self._notification_channel_id = p.notification_channel
@@ -341,7 +344,7 @@ class ProactiveAgent(ToolUsingAgent):
         proactive_tools = [
             DigestCollectTool(),
             ExecutePendingActionsTool(store=store),
-            ChannelSendTool(channel=notification_channel),
+            ChannelSendTool(channel=notification_channel, profile=profile),
             CheckPermissionTool(store=store),
             QueueActionTool(store=store),
             GetPendingActionsTool(store=store),

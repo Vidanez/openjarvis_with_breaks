@@ -11,7 +11,10 @@ from typing import Any
 from openjarvis.channels._stubs import BaseChannel
 from openjarvis.core.registry import ToolRegistry
 from openjarvis.core.types import ToolResult
+from openjarvis.profiles.openjarvis_with_breaks import PersonalAssistantProfile
 from openjarvis.tools._stubs import BaseTool, ToolSpec
+
+_CHANNEL_SEND_ADMISSION = "channel-send-v1"
 
 
 @ToolRegistry.register("channel_send")
@@ -21,8 +24,15 @@ class ChannelSendTool(BaseTool):
     tool_id = "channel_send"
     is_local = False
 
-    def __init__(self, channel: BaseChannel | None = None) -> None:
+    def __init__(
+        self,
+        channel: BaseChannel | None = None,
+        *,
+        profile: PersonalAssistantProfile | None = None,
+    ) -> None:
         self._channel = channel
+        # The profile is process-owned configuration, never tool-call input.
+        self._profile = profile or PersonalAssistantProfile()
 
     @property
     def spec(self) -> ToolSpec:
@@ -51,6 +61,18 @@ class ChannelSendTool(BaseTool):
         )
 
     def execute(self, **params: Any) -> ToolResult:
+        if not (
+            self._profile.automatic_external_effects
+            and self._profile.automation_admission == _CHANNEL_SEND_ADMISSION
+        ):
+            return ToolResult(
+                tool_name="channel_send",
+                content=(
+                    "Owner confirmation required: configure automatic_external_effects "
+                    f"with automation_admission={_CHANNEL_SEND_ADMISSION!r}."
+                ),
+                success=False,
+            )
         if self._channel is None:
             return ToolResult(
                 tool_name="channel_send",
