@@ -1,50 +1,39 @@
-# Capability admission matrix
+# Capability and authority matrix
 
-This matrix is the admission contract for `openjarvis_with_breaks`. A listed capability is not enabled by this document; it records the evidence and controls required before a later slice may enable it. Unlisted capabilities are denied.
+This matrix describes the target product boundary for `openjarvis_with_breaks`. It preserves the upstream OpenJarvis model, engine, tool, and MCP defaults. It does not enable, disable, or replace upstream features by itself.
 
 ## Baseline
 
-| Control | Contract |
+| Area | Contract |
 | --- | --- |
-| Default state | All side-effecting channels, cloud providers, MCP, uploads, shell, filesystem, and automatic learning are off. |
-| Authority | Only an authenticated owner may request an admitted capability. Inbound content and model output are untrusted. |
-| Effects | A send, write, delete, schedule, or change requires a sealed one-time owner approval and receipt, unless a complete bounded automation policy matches. |
-| Cost | Default monthly cloud model/provider cap is **USD 0**. A nonzero cap requires immutable owner approval evidence and explicit configuration in a later implementation slice. |
-| Budget failure | At cap, uncertain usage, missing metering, or provider-admission failure: reject new provider calls fail-closed; do not queue, substitute, or silently fall back to another provider. |
-| Secrets | Tokens and session state belong in a governed runtime secret boundary, never source control, documentation, or ordinary logs. |
+| Models and engines | Preserve normal upstream selection and behavior. Local Ollama/local models and supported external providers remain normal options. |
+| Tools and MCP | Preserve upstream behavior and ordinary safe defaults. Additional service registries, endpoint hashes, admission records, and special profiles are deferred hardening, not prerequisites. |
+| Owner conversations | Direct authenticated owner conversations may be learned automatically and may produce suggestions. |
+| External content and model output | May produce clearly attributed proposals or suggestions for the owner; cannot independently execute an external effect or silently grant permission. |
+| External effects | Sends, writes, deletes, schedules, configuration changes, and comparable external mutations require owner confirmation. |
+| Deployment | Local/OrbStack, generic Docker, systemd, OCI/Cloudflare, and other supported infrastructure are deployment choices; OCI/Cloudflare is optional. |
+| Hermes | Optional future independent peer only. No current-profile access, plugin installation, cost control, or final protocol is implied. |
 
-## Capability profiles
+## Capability matrix
 
-| Profile | Default | Allowed purpose and boundary | Admission evidence required | Effect rule |
-| --- | --- | --- | --- | --- |
-| Local model | Off | Owner tasks within the local runtime; no implied access to tools or external data | Model/version, runtime resource budget, data handling, tool boundary, operational owner approval | No effect without a separate admitted capability and transaction |
-| Approved cloud provider | Off | Explicitly classified owner data only; provider is not a general fallback | Provider and model, region, retention/training policy, data class, token/rate cap, monthly cap, metering method, outage/fail-closed behavior, owner approval receipt | Provider invocation is denied when any admitted bound is absent or exceeded |
-| MCP service | Off | One named service with declared, minimal permissions | Service identity, version/hash, endpoint, permission set, data classes, owner approval, audit fields, expiry/review, kill switch if effecting | Reject arbitrary URLs and stdio commands; downstream effects still require their own transaction |
-| Sandboxed filesystem | Off | A named, minimal workspace needed by an admitted task | Allowed paths, read/write mode, mount isolation, owner approval, audit policy, expiry/review | Writes require a sealed owner approval unless a matching automation policy explicitly permits them |
-| Sandboxed shell | Off | A fixed, isolated command boundary for an admitted task | Command allowlist, image/runtime, network policy, mounts, secret policy, resource limits, owner approval, audit policy | No arbitrary commands; any external mutation needs its own transaction |
-| Google read-only | Off | Narrow Gmail, Calendar, or Drive reads explicitly selected by scope | OAuth scope list, corpus/sync boundary, token custody, data retention, owner approval, revocation handling | No Google mutation is implied by read access |
-| Google write | Off | Exact Gmail send/delete, Calendar mutation, or Drive mutation capability | Explicit OAuth write scope, capability profile, token custody, target/data boundary, audit receipt schema, owner approval | Every mutation needs one matching sealed approval and one execution receipt |
-| Baileys WhatsApp | Off | Isolated owner-scoped profile only; inbound content is untrusted | Dedicated profile, owner/chat allowlists, mode, session-state custody, retention/audit plan, account-risk acknowledgement, kill switch, owner approval | `manual_approval` requires a receipt per send; `automatic_reaction` requires a fully matching bounded policy |
-| Meta WhatsApp Cloud API | Future draft | Preferred future production messaging path; not enabled in this project slice | Separate capability review, provider terms/data controls, channel identity, webhook trust model, receipt/audit and kill-switch design | No send or webhook action until separately admitted |
-| Uploads and attachments | Disabled | No handling until a quarantine pipeline exists | Size/MIME detection, nested archive policy, malware scanning, no-network/no-secret parser sandbox, rendered-text policy, owner admission | Reject before parsing or storage outside the quarantine design |
+| Capability | Current product position | Owner interaction rule | Deferred or optional work |
+| --- | --- | --- | --- |
+| Local models, including Ollama | Normal upstream option | Use follows normal authenticated owner interaction | Optional performance and cost observations |
+| Supported external model providers | Normal upstream option | Use follows normal authenticated owner interaction | Optional provider preferences, cost observations, data-handling choices, and limits |
+| Upstream tools | Retained | An external effect requested through a tool requires owner confirmation | Optional tool hardening after a separate assessment |
+| Upstream MCP | Retained | An external effect requested through MCP requires owner confirmation | Optional registry, endpoint validation, or service profiling if later justified |
+| Direct owner learning | Enabled target behavior | No effect confirmation required for ordinary learning or suggestions | Review, correction, expiry, and deletion UX |
+| External inbound content | Proposal source only | Owner reviews any proposal before confirming an external effect | Source-specific parsing and attachment safety assessment |
+| Model output | Proposal source only | Owner reviews any proposal before confirming an external effect | Output provenance presentation improvements |
+| Email, document, attachment, link, webhook, or message | Untrusted input | Cannot autonomously act or grant permission | Attachment and connector hardening assessment |
+| Google or other connectors | Preserve upstream behavior pending later implementation | Owner confirmation required for external mutations | Narrower scopes or additional controls only if later selected |
+| OCI/Cloudflare reference deployment | Optional user-owned target | Separate owner authorization before provisioning or configuration | Capacity, cost, and runtime-fit review when selected |
+| Hermes peer messaging | Future option | Requires a later interoperability design | Bounded-message protocol and peer authorization design |
 
-## Provider budget and admission record
+## External-effect confirmation boundary
 
-A later implementation must persist an admission record for each cloud provider/model. It must include the provider/model identifiers, region, permitted data classes, retention and training policy, pricing and meter source, monthly cap, token and concurrency limits, reset period, approval receipt reference, and disable state. The record is invalid if any required item is absent, expired, or inconsistent with the current request.
+The confirmation boundary applies only to external effects. It does not apply to ordinary conversation, owner preference learning, memory review, or owner-visible suggestions. A proposal generated from an external source or model must remain attributed to that source and must not become permission or execution authority by itself.
 
-The default cap of USD 0 means no cloud request may leave the runtime. Increasing it is a new owner decision, not a configuration convenience. The implementation must reserve or account for usage before dispatch when possible and deny dispatch when it cannot establish that the cap will be respected.
+## Optional future enhancements
 
-## Automation-policy boundary
-
-Automation is exceptional, not an alternative to approval. A policy must bind exactly one owner, capability, channel, contact allowlist, allowed intent, response boundary or template, start/end time, rate limit, expiry, budget, and emergency disable state. It must not grant task creation, memory changes, approval creation, tool authority, cross-channel effects, or broader recipient access.
-
-For Baileys, group chats are rejected by default. `automatic_reaction` may only send a bounded response to a named allowlisted chat during the policy window. Baileys remains off unless its own profile is enabled; Meta Cloud API remains a separate future admission.
-
-## Admission checklist
-
-- [ ] The capability has a named profile and owner-approved purpose.
-- [ ] Its input provenance and allowed data class are explicit.
-- [ ] Least permissions, limits, retention, and secret custody are documented.
-- [ ] Effects have immutable approvals/receipts or a matching bounded automation policy.
-- [ ] Cost/provider limits meter before dispatch and fail closed.
-- [ ] An expiry, review point, and immediate disable mechanism are defined.
+The following are useful candidates but are explicitly non-blocking: provider preferences; cost observations or voluntary budgets; regional or retention preferences; usage metering; MCP/tool service inventories; endpoint validation; attachment quarantine; sandbox improvements; and more detailed effect receipts. Any future enhancement must preserve the baseline that normal upstream model and tool behavior is not default-denied by this document.

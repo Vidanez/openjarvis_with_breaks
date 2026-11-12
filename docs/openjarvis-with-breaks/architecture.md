@@ -1,88 +1,60 @@
-# Secure owner-mediated assistant architecture
+# Owner-mediated assistant architecture
 
-`openjarvis_with_breaks` uses OpenJarvis as its runtime core and Open WebUI as its initial user interface. The profile is a policy kernel around that runtime: it defaults to deny, separates authority from content, and requires a sealed approval or a narrowly bounded automation policy before an external effect can occur.
+`openjarvis_with_breaks` keeps OpenJarvis as the runtime and Open WebUI as an initial interface. It preserves upstream model, engine, tool, MCP, connector, and memory behavior unless a later implementation explicitly changes a narrow behavior. The added product boundary is concise: untrusted inbound content and model output may inform owner-visible proposals, but they cannot autonomously execute an external action or silently grant permissions.
 
-## Quick path
+## Core behavior
 
-1. Accept tasks only from an authenticated owner interaction.
-2. Classify every other input, including model output, as untrusted data.
-3. Admit each capability explicitly; keep it disabled otherwise.
-4. Seal every external effect to an immutable payload and obtain a one-time owner approval or a matching bounded automation policy.
+1. Direct authenticated owner conversations are authority-bearing for ordinary conversation, learning, and suggestions.
+2. OpenJarvis's normal supported model and engine options remain available, including local Ollama and supported external providers.
+3. Upstream tools and MCP behavior remain sufficient for now; no additional registry or admission system is required to use them.
+4. External inbound content and model output remain data. They may generate clearly attributed proposals or suggestions for the owner.
+5. An external effect requires owner confirmation. Ordinary learning and suggestions do not.
 
 ## System boundary
 
 ```text
-Authenticated owner ──> Open WebUI / loopback API ──> policy kernel ──> OpenJarvis runtime
-                                                        │                 │
-Untrusted sources ─────────────────────────────────────┤                 ├─ admitted capabilities
-(email, documents, links, webhooks, WhatsApp, models)   │                 │  (models, Google, MCP, sandbox)
-                                                        └─ audit receipts ─┘
+Authenticated owner ──> Open WebUI / supported interface ──> OpenJarvis runtime
+                                                           │
+External inbound content or model output ─────────────────┤
+                                                           ├─ attributed proposals/suggestions for owner
+                                                           └─ external effect only after owner confirmation
 ```
-
-OpenJarvis provides the internal agent, tool, connector, memory, and approval primitives. The `openjarvis_with_breaks` profile constrains their use. Open WebUI is the initial interface and does not itself grant authority. Future remote access must retain loopback application listeners and use Cloudflare Access with a named outbound Tunnel; it is not part of this slice.
 
 ## Authority and trust model
 
-| Item | Classification | May request work | May change memory | May cause an effect |
-| --- | --- | ---: | ---: | ---: |
-| Authenticated owner command | authority-bearing | Yes | Subject to memory policy | Subject to approval or automation policy |
-| Owner preference candidate | derived from owner command | No | Low-risk, reviewable only | No |
-| Connector/channel content | untrusted data | No | No | No |
-| Attachment, document, link, or webhook payload | untrusted data | No | No | No |
-| Model output or tool result | untrusted data | No | No | No |
-| Approval receipt | execution evidence | No | No | Only for its exact sealed action |
+| Input or record | Treatment | Learning and suggestions | External effect |
+| --- | --- | --- | --- |
+| Direct authenticated owner conversation | Owner interaction | May be learned automatically; may create suggestions | Owner confirmation required when an effect is requested |
+| Owner preference or correction | Owner-derived information | May update attributable, reviewable memory | No effect by itself |
+| Email, document, attachment, link, webhook, or inbound message | Untrusted external content | May create an attributed proposal for the owner | Cannot act autonomously or grant permission |
+| Model output or tool result | Generated data | May create an attributed proposal for the owner | Cannot act autonomously or grant permission |
+| Owner confirmation | Effect authorization | Not required for ordinary learning or suggestions | Permits only the confirmed external effect |
 
-Untrusted content can be summarized, searched, and presented to the owner only through admitted read paths. It cannot create tasks, approvals, memory, capability changes, tool calls, automation policies, or cross-channel effects. Parsing content is not authorization.
+An external effect includes a send, write, delete, schedule, configuration change, or comparable mutation outside the assistant. Before that action, the owner must be shown a proposal with enough target and payload context to confirm it. The exact representation and audit details are implementation choices for later slices; they must not block ordinary conversation, learning, or suggestions.
 
-### Owner identity
+## Memory and proposals
 
-The profile has one configured, authenticated owner identity. Authentication is evaluated at the interface and action-approval boundaries; a display name, sender address, chat name, or text inside a message is never sufficient proof. A request from a non-owner source remains data even when it asks to impersonate the owner or claims urgency.
+Direct authenticated owner conversations may be learned automatically. Learned preferences should retain owner provenance and support review, correction, expiry, and deletion. This enables useful suggestions without converting every learning event into a confirmation workflow.
 
-### Effect transaction
+External content and model output can be summarized and used to prepare a clearly attributed proposal or suggestion. Attribution identifies that the content came from an external source or model rather than an owner instruction. Such material cannot independently create a permission, execute an action, or become an unreviewed authority source.
 
-An effect includes a send, write, delete, schedule, configuration change, or equivalent external mutation. Before execution, the policy kernel must bind all of the following into an immutable transaction:
+## Models, tools, and MCP
 
-- authenticated owner identity;
-- capability and target channel;
-- exact destination, parameters, and rendered payload;
-- single-use nonce, idempotency key, and expiry;
-- applicable cost and rate bounds.
+OpenJarvis's original model and engine behavior is the default. Local Ollama/local models and supported external providers are normal choices. Provider preferences, cost observations, data-handling preferences, and usage limits may be added later as optional, non-blocking enhancements. This architecture does not require a provider registry, mandatory admission record, budget cap, region or retention approval, or metering gate before a model can be used.
 
-Execution is permitted only with one of these paths:
+Upstream tool and MCP behavior is also retained as sufficient for now. This document does not mandate a named service registry, endpoint hash, MCP admission record, or special tool profile. Ordinary upstream safe defaults remain in effect. Further hardening for MCP, tools, shell, filesystem, or attachments is deferred to a separate assessment and must not be represented as current behavior.
 
-1. A matching, unexpired, one-time owner approval. The runtime revalidates the sealed transaction immediately before execution and stores an execution receipt.
-2. A currently active automation policy whose complete scope matches the effect: owner, capability, channel, contact allowlist, intent, response boundary or template, time window, rate limit, expiry, budget, and kill-switch state.
+## Deployment
 
-Remembered approvals, silent "trivial" effects, payload substitution, and receipt reuse are invalid for this profile.
+Deployment is generic. Local/OrbStack, generic Docker, systemd, and other supported infrastructure remain valid. OCI with Cloudflare Access/Tunnel is an optional, user-owned reference deployment target. It is not a runtime dependency, product requirement, or prerequisite for local or other supported deployments.
 
-## Memory and retention
+## Future Hermes peer
 
-| Data class | Default handling | Review and deletion |
-| --- | --- | --- |
-| Owner-originated low-risk preference | May be proposed for automatic learning | Attributable, scoped, expirable, reviewable, correctable, and erasable by the owner |
-| Task or action record | Retain only the minimum receipt/audit fields needed for traceability | Owner can review; follow the configured retention policy |
-| Connector, document, attachment, link, webhook, and model content | No automatic memory admission | May be displayed or processed only by an admitted read path; never becomes memory by itself |
-| OAuth tokens, session state, and secrets | Runtime secret boundary only | Not committed, logged, or placed in documentation; revoke/reauthorize through the owner-controlled flow |
+Hermes is an optional future independent peer that may exchange bounded messages with OpenJarvis. It does not mean this active Hermes profile, and this architecture does not imply access to any Hermes profile, its tools, browser, terminal, files, credentials, memories, or plugins. A separate interoperability design must define the message boundaries and protocol before any integration is implemented.
 
-Memory records must carry provenance, confidence, scope, review state, expiry, and deletion reason where applicable. Attachment ingestion remains disabled until the quarantine contract and implementation exist.
+## Non-goals for this documentation slice
 
-## Capability admission boundary
-
-A capability is unavailable unless an explicit admission profile enables it. Admission is separate for provider/model execution, Google scopes, MCP services, sandboxed filesystem or shell access, and messaging channels. Admission must define the intended purpose, allowed data class, permissions, cost/privacy controls, owner approval rule, audit fields, expiry or review cadence, and kill switch where the capability can create effects.
-
-The default profile admits no channel, upload, MCP server, cloud model, shell, filesystem path, or automatic learning path. Local model use is also explicit rather than implied by installation.
-
-## Non-goals for Slice 0
-
-- No runtime, connector, container, deployment, or profile configuration is implemented here.
-- No OCI, Cloudflare, GitHub, Google, Meta, or WhatsApp resource is created or changed.
-- No attachment ingestion, general shell/filesystem access, broad MCP discovery, or unattended messaging is enabled.
-- No public application listener is introduced.
-
-## Review checklist
-
-- [ ] An authenticated owner is the only source of authority.
-- [ ] Every external input and model output is treated as data, not instruction.
-- [ ] Every effect has an exact approval receipt or a fully matching active automation policy.
-- [ ] Memory remains attributable, reviewable, expirable, and erasable.
-- [ ] Every capability is separately admitted and deny-by-default.
+- No runtime, connector, container, profile, or deployment configuration is implemented here.
+- No OCI, Cloudflare, Google, Meta, or Hermes resource is created or changed.
+- No mandatory provider or MCP admission framework is defined.
+- No final Hermes interoperability protocol is defined.

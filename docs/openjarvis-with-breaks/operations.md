@@ -1,65 +1,58 @@
-# Operational prerequisites and safe operation
+# Operations and deployment options
 
-Slice 0 defines gates for operating `openjarvis_with_breaks`; it does not deploy or configure a runtime. The service remains local and deny-by-default until all relevant gates are satisfied.
+This document records safe operational choices for `openjarvis_with_breaks`. It does not make a particular cloud, container stack, model provider, tool registry, or Hermes integration a product requirement.
 
 ## Operating posture
 
-| Area | Required posture |
+| Area | Position |
 | --- | --- |
-| Runtime | OpenJarvis is the core; Open WebUI is the initial UI. Application listeners remain loopback-only. |
-| Local validation | Use OrbStack for disposable local topology and profile validation before considering a cloud host. |
-| Remote publication | Deferred. A later approved deployment must use a named outbound Cloudflare Tunnel and Cloudflare Access, not a public application listener. |
-| External actions | Deny unless a sealed owner approval or full matching automation policy authorizes the exact effect. |
-| Cloud models | Deny by default under the USD 0 monthly cap. |
-| Attachments, MCP, shell, filesystem, and messaging | Disabled until individually admitted. |
+| Runtime | OpenJarvis remains the runtime; Open WebUI is an initial interface. |
+| Models and engines | Preserve upstream behavior. Local Ollama/local and supported external providers remain ordinary options. |
+| Tools and MCP | Preserve upstream behavior and ordinary safe defaults. Additional hardening is deferred. |
+| Learning and suggestions | Direct authenticated owner conversations may be learned automatically and may create suggestions. |
+| External content and model output | May create clearly attributed owner proposals, but cannot autonomously cause an external effect or grant permissions. |
+| External effects | Require owner confirmation before execution. |
+| Deployment | Choose any supported environment appropriate to the owner: local/OrbStack, generic Docker, systemd, OCI/Cloudflare, or another supported target. |
+| Hermes | Treat only as a future independent peer; do not connect it to the active Hermes profile. |
 
-## Provisioning gates
+## Deployment choices
 
-No OCI resource may be provisioned until every gate below is true and a new owner approval is recorded.
+### Local and generic deployment
 
-| Gate | Required evidence | Current classification |
-| --- | --- | --- |
-| OCI API authentication | Read-only authentication succeeds without exposing identifiers, key material, or debug output | Required before provisioning |
-| Always Free capacity | A point-in-time report shows the approved exact shape in the home region/availability domain | Blocked: Madrid capacity has not admitted the required free shape |
-| Cost and region review | Owner approves any shape, region, or pricing change; no Trial/PAYG credit is consumed by assumption | Required for any alternative |
-| Runtime fit | Isolated benchmark demonstrates sufficient headroom for OS, Tunnel, Open WebUI, OpenJarvis, logs, backups, and approved model path | Not yet proven |
-| Cloudflare publication | Named Tunnel and Access policy are reviewed; application stays loopback-only | Deferred |
-| Backup and restore | Encrypted backup procedure and a successful restore test exist | Required before remote operation |
-| Health and rollback | Health checks, restart behavior, alerting boundary, and rollback procedure are tested | Required before remote operation |
+Local development and validation can use OrbStack or another supported local environment. Production or persistent operation may use generic Docker, systemd, or other infrastructure that meets the user's requirements. The selected environment should provide ordinary operational basics appropriate to its risk: controlled secret handling, health observation, restart behavior, backup/recovery planning where needed, and a documented rollback path.
 
-Capacity reports do not reserve hosts. If the approved capacity is unavailable, retain the deployment design and stop; do not substitute a paid resource, a different region, or a different allocation without a new owner decision.
+### Optional OCI and Cloudflare reference target
 
-## Local validation runbook
+OCI plus Cloudflare Access/Tunnel is an optional reference target owned by the user. It is not a prerequisite for development, local operation, generic Docker/systemd deployment, model use, tool use, or product runtime.
 
-1. Start only a disposable local environment through OrbStack after the later profile implementation exists.
-2. Confirm application services bind only to loopback.
-3. Confirm the secure profile starts with channels, uploads, MCP, cloud providers, shell, filesystem, and automatic learning disabled.
-4. Exercise owner authentication, untrusted-content classification, denied effects, budget exhaustion, receipt replay rejection, and emergency-disable behavior using non-production test data.
-5. Record only sanitized pass/fail evidence. Do not collect credentials, tokens, identifiers, payloads, or raw debug logs in repository documentation.
-6. Destroy disposable test state when validation completes.
+Factual progress for that optional target:
 
-## Health, backup, and restore contract
+- OCI CLI authentication is resolved (`AUTH_OK`).
+- OCI Always Free capacity in Madrid remains unavailable for the previously considered shapes; a saved Resource Manager stack is reusable but does not reserve capacity.
+- If the user later selects this target, capacity, cost, runtime fit, and the specific provisioning action must be reviewed and authorized at that time.
 
-A later deployment must provide a minimal health signal for the process, policy-kernel availability, storage availability, and backup freshness without revealing sensitive content. Health failure must not weaken the deny-by-default policy or trigger an automatic capability fallback.
+No capacity result should be generalized into a requirement for other environments. Do not substitute a paid resource, region, or allocation for the optional target without a new owner decision.
 
-Backups must be encrypted, access-controlled, and bounded to the minimum runtime state required for recovery. A restore test must prove that the recovered instance maintains loopback binding, secret separation, disabled-by-default capabilities, and audit/approval integrity. Backup restore does not revive expired approvals, receipts, automation policies, revoked credentials, or disabled capabilities.
+## Operational trust boundary
 
-## Incident and rollback rules
+1. Treat inbound email, documents, attachments, links, webhooks, messages, and model output as data rather than authority.
+2. Allow these sources to produce clearly attributed proposals or suggestions for the owner.
+3. Require owner confirmation before a proposal causes an external send, write, delete, schedule, configuration change, or comparable external mutation.
+4. Allow direct authenticated owner conversations to learn preferences and produce suggestions without treating ordinary learning as an external effect.
 
-| Event | Immediate action | Recovery condition |
-| --- | --- | --- |
-| Suspected credential or session-state exposure | Disable affected connector/profile, revoke or reauthorize through the owner-controlled path, preserve only sanitized incident evidence | Secret boundary is re-established and owner explicitly readmits the capability |
-| Untrusted-content authority attempt | Reject the request, retain minimal sanitized audit metadata, review boundary coverage | Test or control demonstrates the content remains data-only |
-| Budget/metering uncertainty | Stop provider dispatch and disable the provider profile | Metering and cap enforcement are verified against the approved admission record |
-| Approval or automation mismatch | Reject execution; do not retry with relaxed scope | New exact approval or matching active policy exists |
-| Messaging concern | Use the kill switch; disable Baileys/profile immediately | Dedicated review confirms allowlists, policy bounds, and audit controls |
-| Failed deployment or health check | Roll back to the last known safe local-only state; keep external capabilities disabled | Health, loopback, backup, and rollback checks pass |
+## Deferred hardening
+
+Provider preferences, cost observations, voluntary budgets, regional or retention preferences, provider metering, tool/MCP inventories, endpoint validation, attachment quarantine, sandbox changes, and detailed audit records are optional future hardening work. They are not current activation gates for normal upstream models, providers, tools, MCP, conversation, learning, or suggestions.
+
+## Future Hermes interoperability
+
+A future Hermes integration means a bounded exchange with an independent peer. It is not an integration with this active Hermes profile. Do not assume dedicated cost controls, plugin installation, profile access, browser/terminal/filesystem access, credential sharing, or a final protocol. A later interoperability design must establish the peer identity, message boundary, authorization, and protocol before implementation.
 
 ## Operational checklist
 
-- [ ] No cloud or remote deployment proceeds while OCI capacity, cost, or runtime-fit gates are unresolved.
-- [ ] Cloudflare Access/Tunnel is reviewed before any remote publication.
-- [ ] Backups are encrypted and a restore test has passed.
-- [ ] Health checks cannot disclose secrets or enable fallbacks.
-- [ ] Provider budgets, capability disable controls, and effect receipts fail closed.
-- [ ] Operational records exclude credentials, keys, personal identifiers, and raw logs.
+- [ ] The selected deployment environment is documented; OCI/Cloudflare is selected only when the owner chooses it.
+- [ ] Direct authenticated owner conversations can learn and suggest under the memory policy.
+- [ ] External content and model output are presented as attributed proposals, not authority.
+- [ ] External effects require owner confirmation.
+- [ ] Optional hardening is not represented as a prerequisite for normal upstream model or tool use.
+- [ ] No Hermes peer connection is implemented without a separate interoperability design.
