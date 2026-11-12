@@ -18,7 +18,7 @@ def test_profile_defaults_deny_all_capabilities_and_is_immutable() -> None:
     assert profile.automatic_external_effects is False
 
     with pytest.raises(FrozenInstanceError):
-        profile.uploads = True
+        profile.uploads = True  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_automatic_external_effects_require_automation_admission() -> None:
@@ -26,3 +26,12 @@ def test_automatic_external_effects_require_automation_admission() -> None:
 
     with pytest.raises(ValueError, match="automation_admission"):
         profile.validate()
+
+
+def test_automatic_external_effects_accept_explicit_admission() -> None:
+    profile = PersonalAssistantProfile(
+        automatic_external_effects=True,
+        automation_admission="whatsapp-reaction-v1",
+    )
+
+    profile.validate()
