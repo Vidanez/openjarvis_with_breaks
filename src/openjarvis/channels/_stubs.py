@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+from openjarvis.core.types import ExternalInputProposal
+
 
 class ChannelStatus(str, Enum):
     """Channel connection status."""
@@ -28,6 +30,17 @@ class ChannelMessage:
     conversation_id: str = ""
     session_id: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def as_untrusted_proposal(self) -> ExternalInputProposal:
+        """Surface inbound channel content with its source, without authority."""
+        return ExternalInputProposal(
+            content=self.content,
+            source=self.channel,
+            sender=self.sender,
+            message_id=self.message_id,
+            conversation_id=self.conversation_id,
+            provider_metadata=dict(self.metadata),
+        )
 
 
 # Type for message handler callbacks

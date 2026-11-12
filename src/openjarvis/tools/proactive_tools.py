@@ -17,8 +17,10 @@ expected to contain one or more tokens of the form:
     ``always no {action_id}``   →  deny + remember
     ``yes all``  /  ``no all``  →  bulk approve/deny all pending
 
-Call ``parse_approval_response(text, store)`` from any channel message handler
-to process these replies without running the full agent.
+Call ``parse_approval_response(text, store)`` only after a separate owner
+identity and admission boundary has produced trusted plain text. Never pass
+external channel content as a string; channel handlers must pass an
+``ExternalInputProposal`` and it will be rejected.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from openjarvis.core.registry import ToolRegistry
-from openjarvis.core.types import ToolResult
+from openjarvis.core.types import ExternalInputProposal, ToolResult
 from openjarvis.tools._stubs import BaseTool, ToolSpec
 from openjarvis.tools.approval_store import (
     DECISION_ALWAYS_APPROVE,
@@ -554,17 +556,18 @@ _APPROVAL_RE = re.compile(
 
 
 def parse_approval_response(
-    text: str,
+    text: str | ExternalInputProposal,
     store: Optional[ApprovalStore] = None,
 ) -> List[Dict[str, Any]]:
-    """Parse a free-text message for approval tokens and update the store.
+    """Process trusted owner approval text; reject external proposals.
 
-    Returns a list of dicts describing each decision that was processed,
-    for use in an acknowledgement message back to the user.
-
-    Call this from any channel message handler before routing the message
-    to the main agent, e.g. inside the iMessage daemon or Telegram bot.
+    ``ExternalInputProposal`` deliberately carries no authority, even when its
+    content resembles an approval token. Owner identity and admission remain a
+    separate concern for the caller that supplies plain text.
     """
+    if isinstance(text, ExternalInputProposal):
+        return []
+
     s = store or get_store()
     processed: List[Dict[str, Any]] = []
 

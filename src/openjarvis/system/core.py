@@ -191,9 +191,18 @@ class JarvisSystem:
             prior_messages=prior_messages,
         )
 
-    def wire_channel(self, channel_bridge: Any) -> None:
+    def wire_channel(
+        self,
+        channel_bridge: Any,
+        *,
+        approval_store: Optional[Any] = None,
+    ) -> None:
         """Register a message handler on *channel_bridge* that routes every
         incoming message through this system (agent or engine) and replies.
+
+        Channel messages are submitted to approval parsing only as untrusted
+        proposals. Plain-text approval parsing is reserved for a separately
+        authenticated owner-admission boundary.
 
         Sessions are isolated per ``"<channel>:<conversation_id>"`` key so
         each chat retains its own history.
@@ -204,8 +213,10 @@ class JarvisSystem:
             A connected :class:`~openjarvis.channels._stubs.BaseChannel`
             instance whose ``on_message`` method accepts a callable.
         """
+        from openjarvis.channels._stubs import ChannelMessage
         from openjarvis.core.types import Message
         from openjarvis.sessions.session import SessionStore
+        from openjarvis.tools.proactive_tools import parse_approval_response
 
         if self.session_store is None:
             from pathlib import Path
@@ -219,6 +230,9 @@ class JarvisSystem:
         _system = self  # capture for closure
 
         def _on_channel_message(cm) -> None:
+            if isinstance(cm, ChannelMessage):
+                parse_approval_response(cm.as_untrusted_proposal(), approval_store)
+
             session_key = f"{cm.channel}:{cm.conversation_id}"
             session = _system.session_store.get_or_create(
                 session_key,
