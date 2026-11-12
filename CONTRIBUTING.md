@@ -134,7 +134,7 @@ Use the appropriate [issue template](https://github.com/open-jarvis/OpenJarvis/i
 
 ### Before Submitting
 
-For the fork's fast pull-request baseline and matching local commands, see [Fork PR CI baseline](docs/development/fork-pr-ci-baseline.md).
+For the fork's fast pull-request baseline and matching local commands, see [Fork PR CI baseline](docs/development/fork-pr-ci-baseline.md). For the blocking security checks, report-only advisory policy, and security regression-test expectations, see [Security test baseline](docs/development/security-test-baseline.md).
 
 1. Run the full test suite:
    ```bash
