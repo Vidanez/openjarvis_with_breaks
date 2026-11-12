@@ -197,11 +197,11 @@ OpenJarvis is built around five composable layers. Each has a clean interface an
 
     Auto-generated reference for every module.
 
--   **[Deployment](deployment/docker.md)**
+-   **[Deployment](deployment/index.md)**
 
     ---
 
-    Docker, systemd, launchd. GPU-accelerated container images.
+    Choose local, Docker, systemd, or optional OCI reference paths for an always-on personal assistant.
 
 -   **[Development](development/contributing.md)**
 

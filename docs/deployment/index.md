@@ -6,7 +6,9 @@ description: Deploy OpenJarvis in production environments
 # Deployment
 
 OpenJarvis supports multiple deployment strategies for different environments
-and scales.
+and scales. Start with the [deployment options](options.md) guide to choose a
+local, Docker, systemd, or optional OCI reference path and to apply the common
+health, rollback, and secret-handling checks.
 
 ## Docker
 
