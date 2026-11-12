@@ -385,9 +385,7 @@ def publish_completed_exchange(
 ) -> bool:
     """Publish a completed chat exchange without flattening input provenance."""
     content = (
-        user_text.content
-        if isinstance(user_text, ExternalInputProposal)
-        else user_text
+        user_text.content if isinstance(user_text, ExternalInputProposal) else user_text
     )
     if bus is None or not content or not content.strip():
         return False
