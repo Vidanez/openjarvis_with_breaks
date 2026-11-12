@@ -11,6 +11,7 @@ from openjarvis.core.registry import (
 )
 from openjarvis.core.types import (
     Conversation,
+    ExternalInputProposal,
     Message,
     ModelSpec,
     Quantization,
@@ -30,6 +31,7 @@ __all__ = [
     "AgentRegistry",
     "Conversation",
     "EngineRegistry",
+    "ExternalInputProposal",
     "MemoryRegistry",
     "Message",
     "ModelRegistry",

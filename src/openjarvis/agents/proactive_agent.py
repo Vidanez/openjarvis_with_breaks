@@ -22,8 +22,9 @@ Approval reply format (user replies to the notification message):
     ``always no {action_id}``      deny + remember for this pattern
     ``yes all`` / ``no all``       bulk decision
 
-Wire up ``parse_approval_response`` from ``proactive_tools`` in your channel
-message handler to process replies without running the full agent.
+Use ``parse_approval_response`` only after a separate trusted owner identity
+and admission boundary; inbound channel messages are untrusted proposals and
+cannot approve actions.
 
 Scheduling
 ----------

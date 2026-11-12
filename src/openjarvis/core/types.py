@@ -79,6 +79,24 @@ class Message:
         return self.content or ""
 
 
+@dataclass(frozen=True, slots=True)
+class ExternalInputProposal:
+    """Untrusted external content retained for later review, never authority.
+
+    The payload and every source identifier remain data. Callers must obtain
+    owner authority through a separate, trusted path before taking an action,
+    changing memory, creating tasks, selecting recipients, or sending content.
+    """
+
+    content: str
+    source: str
+    sender: str = ""
+    message_id: str = ""
+    conversation_id: str = ""
+    provider_metadata: Dict[str, Any] = field(default_factory=dict)
+    can_authorize: bool = field(default=False, init=False)
+
+
 @dataclass(slots=True)
 class Conversation:
     """Ordered list of messages with an optional sliding-window cap."""
