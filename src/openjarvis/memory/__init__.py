@@ -11,6 +11,7 @@ from __future__ import annotations
 from openjarvis.memory.extractor import FactExtractor
 from openjarvis.memory.service import (
     MemoryService,
+    MemorySuggestion,
     build_memory_service,
     publish_completed_exchange,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "FactExtractor",
     "LocalFactStore",
     "MemoryService",
+    "MemorySuggestion",
     "build_memory_service",
     "create_fact_store",
     "load_configured_facts",

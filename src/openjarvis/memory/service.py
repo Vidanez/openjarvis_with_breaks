@@ -18,12 +18,15 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+from dataclasses import dataclass
 from typing import Any, List, Optional
 
 from openjarvis.core.events import Event, EventBus, EventType
+from openjarvis.core.types import ExternalInputProposal
 from openjarvis.memory.extractor import FactExtractor
 from openjarvis.memory.store import (
     TRUST_AUTO,
+    TRUST_TRUSTED,
     TRUST_UNTRUSTED,
     Fact,
     FactStore,
@@ -37,6 +40,13 @@ _BLOCKING_THREAT_LEVELS = frozenset({"high", "critical"})
 
 # Sentinel pushed onto the queue to wake the worker for shutdown.
 _STOP = object()
+
+
+@dataclass(frozen=True, slots=True)
+class MemorySuggestion:
+    """A candidate fact awaiting a trusted owner's explicit acceptance."""
+
+    text: str
 
 
 class MemoryService:
@@ -59,6 +69,8 @@ class MemoryService:
         self._queue: "queue.Queue[Any]" = queue.Queue(maxsize=max(1, max_queue))
         self._thread: Optional[threading.Thread] = None
         self._running = threading.Event()
+        self._suggestions: List[MemorySuggestion] = []
+        self._suggestions_lock = threading.Lock()
 
     # -- lifecycle ----------------------------------------------------------
 
@@ -98,13 +110,18 @@ class MemoryService:
 
     # -- submission ---------------------------------------------------------
 
-    def submit(self, user_text: str, assistant_text: str = "") -> bool:
-        """Queue an exchange for extraction. Non-blocking; never raises.
+    def submit(
+        self,
+        user_text: str | ExternalInputProposal,
+        assistant_text: str = "",
+    ) -> bool:
+        """Queue a trusted exchange for automatic extraction.
 
-        Returns True if the job was enqueued, False if the service is not
-        running or the queue is full (in which case the exchange is dropped
-        rather than blocking the caller — extraction is best-effort).
+        External proposals carry no owner authority and are rejected before
+        they can reach either the extractor or the durable fact store.
         """
+        if isinstance(user_text, ExternalInputProposal):
+            return False
         if not self._running.is_set():
             return False
         if not user_text or not user_text.strip():
@@ -115,6 +132,54 @@ class MemoryService:
         except queue.Full:
             logger.debug("Memory service queue full; dropping exchange")
             return False
+
+    def suggest(
+        self,
+        user_text: str | ExternalInputProposal,
+        assistant_text: str = "",
+    ) -> List[MemorySuggestion]:
+        """Generate reviewable suggestions without changing owner memory.
+
+        Only a caller that has already established trusted owner authority may
+        provide plain text. External proposals never reach the extractor or
+        suggestion queue, even when their content imitates an owner request.
+        """
+        if isinstance(user_text, ExternalInputProposal):
+            return []
+        user_text = (user_text or "").strip()
+        if not user_text:
+            return []
+        if self._blocks_exchange(self._scan(f"{user_text}\n{assistant_text}")):
+            return []
+
+        suggestions = [
+            MemorySuggestion(text=fact)
+            for fact in self._extractor.extract(user_text, assistant_text)
+            if not self._flagged(self._scan(fact))
+        ]
+        if suggestions:
+            with self._suggestions_lock:
+                self._suggestions.extend(suggestions)
+        return suggestions
+
+    def list_suggestions(self) -> List[MemorySuggestion]:
+        """Return pending owner-review suggestions in creation order."""
+        with self._suggestions_lock:
+            return list(self._suggestions)
+
+    def accept_suggestion(self, index: int) -> bool:
+        """Persist one reviewed suggestion as trusted owner memory."""
+        with self._suggestions_lock:
+            if not 0 <= index < len(self._suggestions):
+                return False
+            suggestion = self._suggestions[index]
+            self._store.add_with_trust(
+                suggestion.text,
+                source="owner-reviewed",
+                trust=TRUST_TRUSTED,
+            )
+            self._suggestions.pop(index)
+        return True
 
     def _subscribe_events(self) -> None:
         """Subscribe to lifecycle events that feed automatic memory."""
@@ -139,8 +204,11 @@ class MemoryService:
     def _on_completed_exchange(self, event: Event) -> None:
         """Queue a completed chat exchange published on the event bus."""
         data = event.data or {}
+        user_text = data.get("user_text", "")
         self.submit(
-            str(data.get("user_text", "") or ""),
+            user_text
+            if isinstance(user_text, ExternalInputProposal)
+            else str(user_text or ""),
             str(data.get("assistant_text", "") or ""),
         )
 
@@ -310,13 +378,18 @@ def _build_scanner() -> Any:
 
 def publish_completed_exchange(
     bus: EventBus | None,
-    user_text: str,
+    user_text: str | ExternalInputProposal,
     assistant_text: str = "",
     *,
     source: str = "",
 ) -> bool:
-    """Publish a completed chat exchange for lifecycle subscribers."""
-    if bus is None or not user_text or not user_text.strip():
+    """Publish a completed chat exchange without flattening input provenance."""
+    content = (
+        user_text.content
+        if isinstance(user_text, ExternalInputProposal)
+        else user_text
+    )
+    if bus is None or not content or not content.strip():
         return False
     bus.publish(
         EventType.CHAT_EXCHANGE_COMPLETED,
@@ -329,4 +402,9 @@ def publish_completed_exchange(
     return True
 
 
-__all__ = ["MemoryService", "build_memory_service", "publish_completed_exchange"]
+__all__ = [
+    "MemoryService",
+    "MemorySuggestion",
+    "build_memory_service",
+    "publish_completed_exchange",
+]
