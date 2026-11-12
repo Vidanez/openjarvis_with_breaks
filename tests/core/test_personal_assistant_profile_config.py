@@ -31,8 +31,7 @@ def test_load_config_rejects_unadmitted_automatic_external_effects(
 ) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        "[profile]\n"
-        "automatic_external_effects = true\n",
+        "[profile]\nautomatic_external_effects = true\n",
         encoding="utf-8",
     )
 

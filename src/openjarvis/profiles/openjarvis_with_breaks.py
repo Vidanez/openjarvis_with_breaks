@@ -20,6 +20,4 @@ class PersonalAssistantProfile:
     def validate(self) -> None:
         """Reject automatic external effects without an explicit admission."""
         if self.automatic_external_effects and not self.automation_admission:
-            raise ValueError(
-                "automatic_external_effects requires automation_admission"
-            )
+            raise ValueError("automatic_external_effects requires automation_admission")
