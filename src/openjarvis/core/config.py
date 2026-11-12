@@ -32,6 +32,7 @@ from openjarvis.core.paths import (
     get_config_path,
     get_data_dir,
 )
+from openjarvis.profiles.openjarvis_with_breaks import PersonalAssistantProfile
 
 if TYPE_CHECKING:
     # Only used by type-checkers (mypy/pyright) for the ``JarvisConfig.mining``
@@ -1785,6 +1786,7 @@ class JarvisConfig:
     traces: TracesConfig = field(default_factory=TracesConfig)
     channel: ChannelConfig = field(default_factory=ChannelConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
+    profile: PersonalAssistantProfile = field(default_factory=PersonalAssistantProfile)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     workflow: WorkflowConfig = field(default_factory=WorkflowConfig)
@@ -2138,6 +2140,9 @@ def load_config(path: Optional[Path] = None) -> JarvisConfig:
                     data[section_name],
                 )
 
+        if "profile" in data:
+            cfg.profile = PersonalAssistantProfile(**data["profile"])
+
         # Memory: accept [memory] (old) → maps to tools.storage
         if "memory" in data:
             _apply_toml_section(cfg.tools.storage, data["memory"])
@@ -2164,6 +2169,7 @@ def load_config(path: Optional[Path] = None) -> JarvisConfig:
     if not config_path.exists() and cfg.security.profile:
         apply_security_profile(cfg.security, cfg.server)
 
+    cfg.profile.validate()
     return cfg
 
 
