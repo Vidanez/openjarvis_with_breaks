@@ -10,6 +10,7 @@ from openjarvis.channels._stubs import (
     ChannelStatus,
 )
 from openjarvis.mcp.server import MCPServer
+from openjarvis.profiles.openjarvis_with_breaks import PersonalAssistantProfile
 from openjarvis.tools.channel_tools import (
     ChannelListTool,
     ChannelSendTool,
@@ -78,6 +79,14 @@ def channel():
     return _MockChannel()
 
 
+@pytest.fixture
+def admitted_profile():
+    return PersonalAssistantProfile(
+        automatic_external_effects=True,
+        automation_admission="channel-send-v1",
+    )
+
+
 class TestChannelSendTool:
     def test_spec(self):
         tool = ChannelSendTool()
@@ -86,16 +95,16 @@ class TestChannelSendTool:
         assert "channel" in tool.spec.parameters["required"]
         assert "content" in tool.spec.parameters["required"]
 
-    def test_send_success(self, channel):
-        tool = ChannelSendTool(channel)
+    def test_send_success(self, channel, admitted_profile):
+        tool = ChannelSendTool(channel, profile=admitted_profile)
         result = tool.execute(channel="chat-123", content="Hello!")
         assert result.success is True
         assert "chat-123" in result.content
         assert len(channel._sent) == 1
         assert channel._sent[0]["content"] == "Hello!"
 
-    def test_send_with_conversation_id(self, channel):
-        tool = ChannelSendTool(channel)
+    def test_send_with_conversation_id(self, channel, admitted_profile):
+        tool = ChannelSendTool(channel, profile=admitted_profile)
         result = tool.execute(
             channel="chat-123",
             content="Reply",
@@ -104,8 +113,54 @@ class TestChannelSendTool:
         assert result.success is True
         assert channel._sent[0]["conversation_id"] == "conv-1"
 
-    def test_no_backend(self):
-        tool = ChannelSendTool()
+    def test_unapproved_send_never_reaches_channel(self, channel):
+        result = ChannelSendTool(channel).execute(
+            channel="chat-123",
+            content="Hello!",
+            automatic_external_effects=True,
+            automation_admission="channel-send-v1",
+        )
+
+        assert result.success is False
+        assert "Owner confirmation required" in result.content
+        assert channel._sent == []
+
+    def test_owner_admitted_send_reaches_channel(self, channel):
+        profile = PersonalAssistantProfile(
+            automatic_external_effects=True,
+            automation_admission="channel-send-v1",
+        )
+
+        result = ChannelSendTool(channel, profile=profile).execute(
+            channel="chat-123", content="Hello!"
+        )
+
+        assert result.success is True
+        assert channel._sent == [
+            {"channel": "chat-123", "content": "Hello!", "conversation_id": ""}
+        ]
+
+    @pytest.mark.parametrize(
+        "profile",
+        [
+            PersonalAssistantProfile(automatic_external_effects=True),
+            PersonalAssistantProfile(
+                automatic_external_effects=True,
+                automation_admission="untrusted-message",
+            ),
+        ],
+    )
+    def test_missing_or_invalid_admission_never_reaches_channel(self, channel, profile):
+        result = ChannelSendTool(channel, profile=profile).execute(
+            channel="chat-123", content="Hello!"
+        )
+
+        assert result.success is False
+        assert "Owner confirmation required" in result.content
+        assert channel._sent == []
+
+    def test_no_backend(self, admitted_profile):
+        tool = ChannelSendTool(profile=admitted_profile)
         result = tool.execute(channel="chat-123", content="Hello!")
         assert result.success is False
         assert "No channel backend" in result.content
@@ -121,14 +176,14 @@ class TestChannelSendTool:
         result = tool.execute(channel="chat-123")
         assert result.success is False
 
-    def test_send_failure(self):
-        tool = ChannelSendTool(_FailingChannel())
+    def test_send_failure(self, admitted_profile):
+        tool = ChannelSendTool(_FailingChannel(), profile=admitted_profile)
         result = tool.execute(channel="chat-123", content="Hello!")
         assert result.success is False
         assert "Failed" in result.content
 
-    def test_error_handling(self):
-        tool = ChannelSendTool(_ErrorChannel())
+    def test_error_handling(self, admitted_profile):
+        tool = ChannelSendTool(_ErrorChannel(), profile=admitted_profile)
         result = tool.execute(channel="chat-123", content="Hello!")
         assert result.success is False
         assert "Send error" in result.content
