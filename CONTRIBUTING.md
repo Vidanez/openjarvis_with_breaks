@@ -134,6 +134,8 @@ Use the appropriate [issue template](https://github.com/open-jarvis/OpenJarvis/i
 
 ### Before Submitting
 
+For the fork's fast pull-request baseline and matching local commands, see [Fork PR CI baseline](docs/development/fork-pr-ci-baseline.md).
+
 1. Run the full test suite:
    ```bash
    uv run pytest tests/ -v
