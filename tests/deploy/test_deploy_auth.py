@@ -28,6 +28,19 @@ def test_docker_compose_requires_api_key():
     assert "OPENJARVIS_API_KEY:?" in text
 
 
+def test_orbstack_compose_override_is_loopback_only_and_disables_ollama():
+    override = DEPLOY / "docker" / "docker-compose.orbstack.yml"
+    assert override.is_file()
+
+    text = override.read_text()
+    assert '"127.0.0.1:8000:8000"' in text
+    assert "depends_on: !reset []" in text
+    assert 'profiles: ["disabled"]' in text
+    assert "OPENJARVIS_API_KEY" not in text
+    assert "OPENJARVIS_ENGINE_DEFAULT" not in text
+    assert "OLLAMA_HOST" not in text
+
+
 def test_docker_env_example_present():
     assert (DEPLOY / "docker" / ".env.example").is_file()
     assert "OPENJARVIS_API_KEY" in _read("docker/.env.example")
