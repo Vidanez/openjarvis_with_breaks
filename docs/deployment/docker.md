@@ -13,7 +13,7 @@ cp .env.example .env
 echo "OPENJARVIS_API_KEY=$(jarvis auth generate-key)" > .env   # or paste your own
 ```
 
-Then start both the API server and an Ollama backend with Docker Compose:
+Then start the API server and Ollama with Docker Compose:
 
 ```bash
 docker compose up -d
@@ -23,12 +23,17 @@ docker compose up -d
 environment) and fails fast if it is unset. Clients must then send
 `Authorization: Bearer <key>` on `/v1/*` and `/api/*` requests.
 
-This brings up two services:
+This starts the persistent services and a one-shot model-pull job:
 
-| Service  | Port  | Description                        |
-|----------|-------|------------------------------------|
-| `jarvis` | 8000  | OpenJarvis API server              |
-| `ollama` | 11434 | Ollama inference engine            |
+| Service       | Port  | Description                        |
+|---------------|-------|------------------------------------|
+| `jarvis`      | 8000  | OpenJarvis API server              |
+| `ollama`      | 11434 | Ollama inference engine            |
+| `ollama-pull` | —     | Pulls the configured local model   |
+
+Before starting the API, Compose pulls `qwen2.5:3b` into the persistent
+`ollama-models` volume. The API starts as `jarvis serve --engine ollama --model
+qwen2.5:3b`, so it does not depend on hardware-based or cloud-engine selection.
 
 Verify the server is running:
 
@@ -186,8 +191,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENJARVIS_ENGINE_DEFAULT=ollama
-      - OPENJARVIS_OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
     restart: unless-stopped
@@ -206,12 +210,12 @@ volumes:
 
 ### Environment Variables
 
-The `jarvis` service is configured through environment variables:
+The Compose command pins the `ollama` engine and `qwen2.5:3b` model. Its only
+engine environment variable is the Ollama service endpoint:
 
-| Variable                      | Description                                             | Default                    |
-|-------------------------------|---------------------------------------------------------|----------------------------|
-| `OPENJARVIS_ENGINE_DEFAULT`   | Inference engine backend to use                         | `ollama`                   |
-| `OPENJARVIS_OLLAMA_HOST`      | URL of the Ollama server (uses Docker service name)     | `http://ollama:11434`      |
+| Variable        | Description                                         | Default                |
+|-----------------|-----------------------------------------------------|------------------------|
+| `OLLAMA_HOST`   | URL of the Ollama server (uses Docker service name) | `http://ollama:11434`  |
 
 ### Volumes
 
@@ -238,8 +242,7 @@ services:
     volumes:
       - ./my-config.toml:/root/.openjarvis/config.toml:ro
     environment:
-      - OPENJARVIS_ENGINE_DEFAULT=ollama
-      - OPENJARVIS_OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
     restart: unless-stopped
@@ -288,8 +291,7 @@ services:
               count: all
               capabilities: [gpu]
     environment:
-      - OPENJARVIS_ENGINE_DEFAULT=ollama
-      - OPENJARVIS_OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
     restart: unless-stopped
@@ -372,10 +374,11 @@ services:
 
 ## Pulling Models
 
-After starting the Ollama container, you need to pull at least one model before the API server can serve requests:
+Compose pulls `qwen2.5:3b` automatically before OpenJarvis starts. To pull an
+additional model later:
 
 ```bash
-docker compose exec ollama ollama pull qwen3:8b
+docker compose exec ollama ollama pull <model>
 ```
 
 Verify models are available through the API:
