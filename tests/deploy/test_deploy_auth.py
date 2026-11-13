@@ -28,6 +28,19 @@ def test_docker_compose_requires_api_key():
     assert "OPENJARVIS_API_KEY:?" in text
 
 
+def test_docker_compose_explicitly_serves_the_local_ollama_model():
+    text = _read("docker/docker-compose.yml")
+
+    # The CLI must pin engine and model; the engine uses OLLAMA_HOST to reach
+    # the separate Compose service.
+    assert 'command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--engine", "ollama", "--model", "qwen2.5:3b"]' in text
+    assert "OLLAMA_HOST=http://ollama:11434" in text
+    assert 'command: ["pull", "qwen2.5:3b"]' in text
+    assert "condition: service_completed_successfully" in text
+    # The puller and serving daemon must see the same model store.
+    assert text.count("ollama-models:/root/.ollama") == 2
+
+
 def test_orbstack_compose_override_is_loopback_only_and_disables_ollama():
     override = DEPLOY / "docker" / "docker-compose.orbstack.yml"
     assert override.is_file()
@@ -36,6 +49,9 @@ def test_orbstack_compose_override_is_loopback_only_and_disables_ollama():
     assert 'ports: !override\n      - "127.0.0.1:8000:8000"' in text
     assert "depends_on: !reset []" in text
     assert 'profiles: ["disabled"]' in text
+    assert "ollama-pull:" in text
+    assert text.count("depends_on: !reset []") == 2
+    assert text.count('profiles: ["disabled"]') == 2
     assert "OPENJARVIS_API_KEY" not in text
     assert "OPENJARVIS_ENGINE_DEFAULT" not in text
     assert "OLLAMA_HOST" not in text

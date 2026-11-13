@@ -10,3 +10,8 @@ services:
     profiles: ["disabled"]
     ports: !reset []
     restart: "no"
+
+  ollama-pull:
+    depends_on: !reset []
+    profiles: ["disabled"]
+    restart: "no"

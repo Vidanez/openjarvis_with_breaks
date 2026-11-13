@@ -3,10 +3,11 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--engine", "ollama", "--model", "qwen2.5:3b"]
     ports:
       - "8000:8000"
     environment:
-      - OPENJARVIS_ENGINE_DEFAULT=ollama
+      # OllamaEngine reads this when no TOML host is configured.
       - OLLAMA_HOST=http://ollama:11434
       # The container binds 0.0.0.0, so an API key is REQUIRED. Compose fails
       # fast if OPENJARVIS_API_KEY is unset (set it in deploy/docker/.env —
@@ -15,6 +16,8 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   ollama:
@@ -32,6 +35,18 @@ services:
       retries: 10
       start_period: 10s
     restart: unless-stopped
+
+  ollama-pull:
+    # Pull the exact model served by the API before the API starts. The named
+    # volume makes this a no-op after the first successful deployment.
+    image: ollama/ollama:0.30.10@sha256:bfc9c6d53cc6989aa5131a6fde6b162b2802d4d337657f3253b5f69579bddeee
+    command: ["pull", "qwen2.5:3b"]
+    volumes:
+      - ollama-models:/root/.ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   ollama-models:
